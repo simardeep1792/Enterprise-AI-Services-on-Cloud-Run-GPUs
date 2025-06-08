@@ -1,0 +1,6 @@
+flask==2.3.3
+google-cloud-monitoring==2.15.1
+google-cloud-logging==3.5.0
+torch==2.0.1
+torchvision==0.15.2
+pillow==10.0.0
