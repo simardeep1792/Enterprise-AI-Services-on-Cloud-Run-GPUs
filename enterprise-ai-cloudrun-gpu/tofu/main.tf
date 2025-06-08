@@ -1,4 +1,3 @@
-# terraform/main.tf
 terraform {
   required_version = ">= 1.0"
   required_providers {
@@ -27,7 +26,7 @@ variable "region" {
 
 # Service account for AI workloads
 resource "google_service_account" "ai_service_account" {
-  account_id   = "ai-service-account"
+  account_id   = var.service_account_name
   display_name = "AI Services Account"
   description  = "Service account for AI inference workloads"
 }
@@ -86,9 +85,9 @@ resource "google_cloud_run_service" "document_intelligence" {
 
     metadata {
       annotations = {
-        "autoscaling.knative.dev/maxScale" = "100"
+        "autoscaling.knative.dev/maxScale" = tostring(var.max_instances)
         "autoscaling.knative.dev/minScale" = "0"
-        "run.googleapis.com/gpu-type" = "nvidia-l4"
+        "run.googleapis.com/gpu-type" = var.gpu_type
       }
     }
   }
@@ -135,7 +134,7 @@ resource "google_cloud_run_service" "computer_vision" {
       annotations = {
         "autoscaling.knative.dev/maxScale" = "50"
         "autoscaling.knative.dev/minScale" = "0"
-        "run.googleapis.com/gpu-type" = "nvidia-l4"
+        "run.googleapis.com/gpu-type" = var.gpu_type
       }
     }
   }
@@ -148,6 +147,7 @@ resource "google_cloud_run_service" "computer_vision" {
 
 # IAM for public access (adjust for production)
 resource "google_cloud_run_service_iam_binding" "document_intelligence_public" {
+  count    = var.enable_public_access ? 1 : 0
   location = google_cloud_run_service.document_intelligence.location
   service  = google_cloud_run_service.document_intelligence.name
   role     = "roles/run.invoker"
@@ -155,6 +155,7 @@ resource "google_cloud_run_service_iam_binding" "document_intelligence_public" {
 }
 
 resource "google_cloud_run_service_iam_binding" "computer_vision_public" {
+  count    = var.enable_public_access ? 1 : 0
   location = google_cloud_run_service.computer_vision.location
   service  = google_cloud_run_service.computer_vision.name
   role     = "roles/run.invoker"
