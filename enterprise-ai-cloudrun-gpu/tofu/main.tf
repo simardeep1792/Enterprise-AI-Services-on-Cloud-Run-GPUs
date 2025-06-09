@@ -13,17 +13,6 @@ provider "google" {
   region  = var.region
 }
 
-variable "project_id" {
-  description = "GCP Project ID"
-  type        = string
-}
-
-variable "region" {
-  description = "Primary deployment region"
-  type        = string
-  default     = "northamerica-northeast1"
-}
-
 # Service account for AI workloads
 resource "google_service_account" "ai_service_account" {
   account_id   = var.service_account_name
@@ -50,7 +39,7 @@ resource "google_project_iam_binding" "ai_logging_writer" {
   ]
 }
 
-# Cloud Run services
+# Cloud Run service - Document Intelligence only (due to GPU quota)
 resource "google_cloud_run_service" "document_intelligence" {
   name     = "document-intelligence"
   location = var.region
@@ -69,7 +58,7 @@ resource "google_cloud_run_service" "document_intelligence" {
         resources {
           limits = {
             cpu     = "4"
-            memory  = "8Gi"
+            memory  = "16Gi"
             "nvidia.com/gpu" = "1"
           }
         }
@@ -98,75 +87,11 @@ resource "google_cloud_run_service" "document_intelligence" {
   }
 }
 
-resource "google_cloud_run_service" "computer_vision" {
-  name     = "computer-vision"
-  location = var.region
-
-  template {
-    spec {
-      service_account_name = google_service_account.ai_service_account.email
-
-      containers {
-        image = "gcr.io/${var.project_id}/computer-vision:latest"
-
-        ports {
-          container_port = 8080
-        }
-
-        resources {
-          limits = {
-            cpu     = "4"
-            memory  = "8Gi"
-            "nvidia.com/gpu" = "1"
-          }
-        }
-
-        env {
-          name  = "GOOGLE_CLOUD_PROJECT"
-          value = var.project_id
-        }
-      }
-
-      timeout_seconds = 180
-    }
-
-    metadata {
-      annotations = {
-        "autoscaling.knative.dev/maxScale" = "50"
-        "autoscaling.knative.dev/minScale" = "0"
-        "run.googleapis.com/gpu-type" = var.gpu_type
-      }
-    }
-  }
-
-  traffic {
-    percent         = 100
-    latest_revision = true
-  }
-}
-
-# IAM for public access (adjust for production)
+# IAM for public access
 resource "google_cloud_run_service_iam_binding" "document_intelligence_public" {
   count    = var.enable_public_access ? 1 : 0
   location = google_cloud_run_service.document_intelligence.location
   service  = google_cloud_run_service.document_intelligence.name
   role     = "roles/run.invoker"
   members  = ["allUsers"]
-}
-
-resource "google_cloud_run_service_iam_binding" "computer_vision_public" {
-  count    = var.enable_public_access ? 1 : 0
-  location = google_cloud_run_service.computer_vision.location
-  service  = google_cloud_run_service.computer_vision.name
-  role     = "roles/run.invoker"
-  members  = ["allUsers"]
-}
-
-# Outputs
-output "document_intelligence_url" {
-  value = google_cloud_run_service.document_intelligence.status[0].url
-}
-
-output "computer_vision_url" {
-  value = google_cloud_run_service.computer_vision.status[0].url
 }

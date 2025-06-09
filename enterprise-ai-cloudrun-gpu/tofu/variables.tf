@@ -10,17 +10,7 @@ variable "project_id" {
 variable "region" {
   description = "Primary deployment region for Cloud Run services"
   type        = string
-  default     = "northamerica-northeast1"
-  validation {
-    condition = contains([
-      "northamerica-northeast1",
-      "northamerica-northeast2",
-      "us-central1",
-      "us-east1",
-      "us-west1"
-    ], var.region)
-    error_message = "Region must be a valid GCP region that supports Cloud Run GPUs."
-  }
+  default     = "us-central1"
 }
 
 variable "service_account_name" {
@@ -32,41 +22,17 @@ variable "service_account_name" {
 variable "max_instances" {
   description = "Maximum number of instances for auto-scaling"
   type        = number
-  default     = 100
-  validation {
-    condition     = var.max_instances > 0 && var.max_instances <= 1000
-    error_message = "Max instances must be between 1 and 1000."
-  }
+  default     = 10
 }
 
 variable "gpu_type" {
   description = "Type of GPU to use for Cloud Run services"
   type        = string
   default     = "nvidia-l4"
-  validation {
-    condition = contains([
-      "nvidia-l4"
-    ], var.gpu_type)
-    error_message = "GPU type must be nvidia-l4 (only supported type in Cloud Run)."
-  }
 }
 
 variable "enable_public_access" {
-  description = "Whether to enable public access to the services (disable for production)"
+  description = "Whether to enable public access to the services"
   type        = bool
   default     = true
-}
-
-variable "environment" {
-  description = "Environment name (dev, staging, prod)"
-  type        = string
-  default     = "dev"
-  validation {
-    condition = contains([
-      "dev",
-      "staging",
-      "prod"
-    ], var.environment)
-    error_message = "Environment must be dev, staging, or prod."
-  }
 }
