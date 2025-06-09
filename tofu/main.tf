@@ -1,3 +1,4 @@
+# tofu/main.tf
 terraform {
   required_version = ">= 1.0"
   required_providers {
@@ -35,6 +36,31 @@ resource "google_project_iam_binding" "ai_logging_writer" {
   ]
 }
 
+# Conditional GPU configuration
+locals {
+  # Only include GPU config if explicitly enabled
+  gpu_resources = var.enable_gpu ? {
+    "nvidia.com/gpu" = "1"
+  } : {}
+
+  # Combine base resources with optional GPU
+  container_resources = merge({
+    cpu    = "4"
+    memory = var.enable_gpu ? "16Gi" : "8Gi"  # 16Gi required for GPU, 8Gi for CPU
+  }, local.gpu_resources)
+
+  # Only include GPU annotation if enabled
+  gpu_annotations = var.enable_gpu ? {
+    "run.googleapis.com/gpu-type" = var.gpu_type
+  } : {}
+
+  # Combine base annotations with optional GPU
+  service_annotations = merge({
+    "autoscaling.knative.dev/maxScale" = tostring(var.max_instances)
+    "autoscaling.knative.dev/minScale" = "0"
+  }, local.gpu_annotations)
+}
+
 resource "google_cloud_run_service" "document_intelligence" {
   name     = "document-intelligence"
   location = var.region
@@ -51,11 +77,7 @@ resource "google_cloud_run_service" "document_intelligence" {
         }
 
         resources {
-          limits = {
-            cpu     = "4"
-            memory  = "16Gi"
-            "nvidia.com/gpu" = "1"
-          }
+          limits = local.container_resources
         }
 
         env {
@@ -68,11 +90,7 @@ resource "google_cloud_run_service" "document_intelligence" {
     }
 
     metadata {
-      annotations = {
-        "autoscaling.knative.dev/maxScale" = tostring(var.max_instances)
-        "autoscaling.knative.dev/minScale" = "0"
-        "run.googleapis.com/gpu-type" = "nvidia-t4"
-      }
+      annotations = local.service_annotations
     }
   }
 
