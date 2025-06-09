@@ -13,18 +13,15 @@ provider "google" {
   region  = var.region
 }
 
-# Service account for AI workloads
 resource "google_service_account" "ai_service_account" {
   account_id   = var.service_account_name
   display_name = "AI Services Account"
   description  = "Service account for AI inference workloads"
 }
 
-# IAM bindings
 resource "google_project_iam_binding" "ai_monitoring_writer" {
   project = var.project_id
   role    = "roles/monitoring.metricWriter"
-
   members = [
     "serviceAccount:${google_service_account.ai_service_account.email}",
   ]
@@ -33,13 +30,11 @@ resource "google_project_iam_binding" "ai_monitoring_writer" {
 resource "google_project_iam_binding" "ai_logging_writer" {
   project = var.project_id
   role    = "roles/logging.logWriter"
-
   members = [
     "serviceAccount:${google_service_account.ai_service_account.email}",
   ]
 }
 
-# Cloud Run service - Document Intelligence only (due to GPU quota)
 resource "google_cloud_run_service" "document_intelligence" {
   name     = "document-intelligence"
   location = var.region
@@ -76,7 +71,7 @@ resource "google_cloud_run_service" "document_intelligence" {
       annotations = {
         "autoscaling.knative.dev/maxScale" = tostring(var.max_instances)
         "autoscaling.knative.dev/minScale" = "0"
-        "run.googleapis.com/gpu-type" = var.gpu_type
+        "run.googleapis.com/gpu-type" = "nvidia-t4"
       }
     }
   }
@@ -87,7 +82,6 @@ resource "google_cloud_run_service" "document_intelligence" {
   }
 }
 
-# IAM for public access
 resource "google_cloud_run_service_iam_binding" "document_intelligence_public" {
   count    = var.enable_public_access ? 1 : 0
   location = google_cloud_run_service.document_intelligence.location

@@ -10,7 +10,7 @@ variable "project_id" {
 variable "region" {
   description = "Primary deployment region for Cloud Run services"
   type        = string
-  default     = "us-central1"
+  default     = "northamerica-northeast1"
 }
 
 variable "service_account_name" {
@@ -28,7 +28,7 @@ variable "max_instances" {
 variable "gpu_type" {
   description = "Type of GPU to use for Cloud Run services"
   type        = string
-  default     = "nvidia-l4"
+  default     = "nvidia-t4"
 }
 
 variable "enable_public_access" {
